@@ -8,11 +8,25 @@ is the long form; `corpus/flow-builder/40-rules.md` is the validation ledger; 20
 
 | Surface | Base | Credential | Executor | Notes |
 |---|---|---|---|---|
-| App (everything the UI does) | `https://app.manychat.com/fb{accountId}/…` | session cookie `mc_production-main` + `X-Csrf-Token` | **in-page** (`scripts/inpage-client.js` via chrome-devtools `evaluate_script`) | `accountInstance`; `/:currentAccountID` in source |
+| App (everything the UI does) | `https://app.manychat.com/fb{accountId}/…` | session cookie `mc_production-main` + `X-Csrf-Token` | **Node** (cookie alone is enough — see below) or in-page via chrome-devtools `evaluate_script` | `accountInstance`; `/:currentAccountID` in source |
 | App, account-less | `https://app.manychat.com/…` (`agency/get`, `manychat/getSharedFlow`, `/{pageId}/…` cross-account reads) | same | in-page | `baseInstance` |
 | Static bundle | `https://mccdn.me/{STATIC_VERSION}/assets/index.js` | none | curl | |
-| Public API | `https://api.manychat.com/fb/…` | `Authorization: Bearer {accountId}:{token}` | Node | 34 ops, no flow building |
-| Bot wall | AWS WAF on `/signin` (image CAPTCHA, `aws-waf-token` cookie ~4 days) + Cloudflare on the marketing site | human | — | only the chrome-devtools profile holds a session |
+| Public API | `https://api.manychat.com/fb/…` | `Authorization: Bearer {pageId}:{token}` | Node | 34 ops, no flow building. Key = `__INIT__…public_api_access_token`, **null until minted** by `POST /api/token/generate`. `settings.api_key` is NOT it (401 `Wrong token`) |
+| Bot wall | AWS WAF on `/signin` (image CAPTCHA) + Cloudflare on the marketing site | human | — | only the chrome-devtools profile holds a session |
+
+## Executor and session lifetime (measured 2026-09-03)
+
+- **A Node client works**: the `mc_production-main` cookie alone authenticates every app endpoint
+  probed. `aws-waf-token` is NOT required off the sign-in page (differential: identical results with
+  and without). In-page `evaluate_script` is the fallback, not the requirement.
+- The session cookie lasts **30 days** from login; the WAF cookie ~4 days.
+- Cookies are readable from the chrome-devtools profile's `Default/Cookies` **without a Keychain
+  prompt**: that Chrome runs `--use-mock-keychain --password-store=basic`, so the AES-128-CBC key is
+  PBKDF2("mock_password","saltysalt",1003,16). Chrome ≥130 prefixes the plaintext with
+  SHA-256(host_key) — strip it. `expires_utc` exceeds 2^53, so read it as text.
+- `GET /` on the app intermittently answers **202 + a WAF challenge page** to a scripted client; that
+  is not a dead session. `/dashboard` 302s to `/fb{accountId}/dashboard` and is the reliable way to
+  learn which account a session belongs to.
 
 ## Required headers (verbatim from `shared/api/initApi.ts`)
 
@@ -72,4 +86,8 @@ Client account: reads only unless the user says otherwise; every write a `TEST-C
 
 ## Optional modules
 
-Harvester rules: OFF (no machine consumer of the corpus yet).
+Harvester rules: OFF. **There is now a machine consumer**: `Misc/manychat/plugin` (the
+uxie-manychat-factory plugin) ports `corpus/flow-builder/40-rules.md` verbatim into its MCP server's
+`core/rules.mjs` and mines the same source catalogue into a 922-row endpoint catalogue. Keep the
+corpus, this profile and that server in agreement; the server re-proved 12 of the server-enforced
+rules by differential on 2026-09-03 (12/12 identical strings).
