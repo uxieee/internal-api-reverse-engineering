@@ -6,7 +6,7 @@ API documentation, an MCP server or a client on top of what you find.
 
 Works with Claude Code, Codex and any runtime that follows the [agent skills spec](https://agentskills.io).
 Product-agnostic: the method is generic, and everything product-specific lives in a per-product
-profile. GoHighLevel and ManyChat profiles ship proven; ClickUp ships as a source-only draft.
+profile. GoHighLevel and ManyChat profiles ship with it, both proven live.
 
 ## Install
 
@@ -67,7 +67,7 @@ references/
   auth-executors.md              cookie vs bearer vs dual; in-page vs Node; bot walls; cookie-store check
   proof-ledger.md                the ledger format and recipes R1–R21
   corpus-contract.md             tree, layers, status floor, checklist marks, optional harvester module
-  profiles/                      README (template) · gohighlevel · manychat · clickup (draft)
+  profiles/                      README (template) · gohighlevel · manychat
 scripts/
   fetch-maps.py                  transitive public-source-map miner
   extract-catalogue.mjs          pluggable endpoint-catalogue extractor (--list-idioms)

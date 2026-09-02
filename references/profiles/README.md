@@ -4,7 +4,7 @@ A profile is the product-specific half of the method: everything the generic pha
 that differs between products. The skill reads the profile at the start of a session; a session
 on a product without one produces the profile as its first deliverable (Phase 0 fills most of it).
 
-Profiles here: `gohighlevel.md` and `manychat.md` (proven-live), `clickup.md` (source-only draft).
+Profiles here: `gohighlevel.md` and `manychat.md` (both proven-live).
 A new product gets `<product>.md` in this folder, and the research folder's
 `reference/internal-api-map.md` is its long form.
 
