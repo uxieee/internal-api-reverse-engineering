@@ -79,6 +79,13 @@ Deep links **work** — every route is served (`/{acc}/cms/files/{ns}/edit` open
 - Condition field formats (R9): custom field is the string `cuf_<id>` (bare id → `Wrong field format`, number → `Field must be a string`); tokens in text `{{cuf_<id>}}`, `{{gaf_<id>}}`.
 - Trigger auto-tags (`Post or Reel Comments #N`) are rejected in `add_tag` (`Wrong tag`). `tags/list` requires `type=user`.
 - Widget `data` accepted `post_covered_area:"bogus"` and empty keywords (C only); `specific_post` without a post → `Please select a post to track comments` (S).
+- **An image must be one ManyChat stored** (2026-09-03): a URL image is refused on publish with
+  `Attachment without caid` in EVERY shape — including the `external_image` form the product's own
+  Exporter emits, `{type,url}`, and a bare URL. Upload first (`POST /content/upload`, multipart,
+  **file field named `0`** — `file` returns the misleading `Uploaded file is not an image`) and send
+  the returned object. A good reminder that a shape recovered from the client is what the CLIENT
+  builds, not necessarily what the server accepts.
+- A `dynamic` block's `payload` must be a JSON **string**; an object returns `Something went wrong`.
 
 ## Safety
 
