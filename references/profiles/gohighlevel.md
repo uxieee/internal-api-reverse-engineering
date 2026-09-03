@@ -14,6 +14,7 @@ and a bundle before the network.
 | Workflow builder, oauth/session, most agency/location data | `backend.leadconnectorhq.com` | `Authorization: Bearer <LeadConnector JWT>` | Node (the internal MCP gateway adds auth + companions) | UID = `authClassId`; company id from `/list` |
 | AI services: Conversation AI, Voice AI, Agent Studio, knowledge base | `services.leadconnectorhq.com` | Bearer **and** `token-id` (Google securetoken RS256) together | Node, `host:"ai"` on the gateway = origin switch + second credential | never set either by hand through the MCP |
 | Smart lists `/contacts/smartlist/*` | both hosts | `services` + `token-id` alone (what the UI sends) **or** `backend` + Bearer alone | Node | proven by multi-host differential (R18): neither needs both |
+| Agent Logs `/agent-logs/*` | `services` | Bearer **or** `token-id` — **either alone** (R18-proven) | Node, `host:"ai"` | the page itself sends only `token-id`; Bearer + `x-internal-dashboard` is GHL's staff mode |
 | Funnels `/funnels/*` | `backend` | `token-id`, not Bearer | Node | A/B proven; auth is per surface |
 | Memberships/courses | `backend` (live-proven); `services` unproven | Bearer | Node | member rail needs `source: PORTAL_USER` + `version: 2023-02-21` |
 | Public API | `services.leadconnectorhq.com` (v2/v3) | Private Integration Token | `@uxieee/ghl-mcp` | ToS-clean rail; workflow builder is not on it |
@@ -33,7 +34,14 @@ Strict DTO validators on several services return 422 listing every violated cons
 - Shell `https://client-app-automation-workflows.leadconnectorhq.com/` → `/assets/index-<hash>.js`; lazy chunks referenced as `assets/Name-<hash>.js`. ~215 chunks.
 - Maps are public at `<chunk>.js.map` (6.2 MB main). The `//# sourceMappingURL` comment is **absent** on the current build; `fetch-maps.py` finds the maps by the sibling convention.
 - Recovered tree: `knowledge/sniffs/bundle-2026-08-21-2/recovered-source/src` (1,867 files incl. the page layer). Drift: `fetch-maps.py --check --shell-url …` or `node sniffs/recapture.mjs --check`.
-- The AI apps and the memberships builder have their own bundles; memberships is recovered under `sniffs/memberships-builder-2026-08-24/`; the AI apps have no recovered source (their rows come from the corpus).
+- **Federated remotes** (the AI apps) are listed in a PUBLIC build manifest:
+  `https://production.app-manifest.leadconnectorhq.com/latest/manifest.json` → `federatedApps` gives
+  every remote and its build number, e.g. `appcdn.leadconnectorhq.com/ai/agent-logs/615/remoteEntry.js`.
+  **The build number is part of the path** — the same URL without it 404s. Chunk names come from the
+  webpack `.u` function inside `remoteEntry.js`. These remotes ship **no source maps** (all 14
+  agent-logs chunks 404 on `.js.map`), so mine the minified chunks: the API client, its interceptors,
+  the filter table, the enums and the i18n bundle are all still readable.
+- The AI apps and the memberships builder have their own bundles; memberships is recovered under `sniffs/memberships-builder-2026-08-24/`. The AI apps have no recovered *source tree* (no maps, see above) — mine their minified remotes directly, as the Agent Logs pass did.
 
 ## Request-definition idiom → extractor
 
@@ -59,6 +67,12 @@ Deep links **404**: only `/` is served and a direct inner URL renders a partial 
 - Cross-references are by id except literal values (`fromPhoneNumber` as E.164).
 
 ## Known ledger rows (negative knowledge first)
+- **Agent Logs** `/agent-logs/*`: paging offset is capped at 500 (`(page-1)*limit`); `limit` is uncapped
+  and `pageToken` walks past the cap — but **only when `page` is omitted**, and the cursor is keyed on
+  timestamp so any other `sortBy` loops forever. `asc` is inclusive, `desc` exclusive. The service
+  validates **types** (422) but never **values** — a bogus `timeRange`/`sortBy` is silently ignored.
+  On `/spans`, do **not** send `conversationId`: it drops the `ai_splitter` span. `filter-values`
+  accepts only `agentName, channel, contactName, voiceName`.
 
 - `/workflows/logs/v2` ignores `fromDate`/`toDate` unless `dateType=custom`; cursor needs `action=next`; otherwise a day-snapped ~30-day default (R13). `get_workflow_logs` does **not** drop `skipped` rows.
 - workflow-with-filter's cursor is **inclusive** (limit=1 never advances) and it rejects `dateType`.
